@@ -1,0 +1,75 @@
+# Step 9: 2 to 4 players. The number of players is drawn at each game
+# (20 % 2, 40 % 3, 40 % 4) and each opponent seat is drawn independently
+# (mixed tables). Starts from the 2-player reference model (300k).
+name: multi_players
+seed: 4
+n_envs: 8
+total_timesteps: 2_000_000
+init_from: models/frozen/ppo_cont_300k_seed2.zip   # new run, step counter at 0
+print_updates: true   # one line per PPO update + round stats per number of players / opponent kind
+alarms:               # stop the training with a message in the log when...
+  ev_below: 0.3       # ...explained_variance stays below 0.3...
+  ev_patience: 5      # ...for 5 consecutive updates,
+  forced_above: 0.02  # ...or more than 2 % of the rounds of the last 1000 games are ended by force
+  forced_min_games: 200
+
+env:
+  n_players: {2: 0.2, 3: 0.4, 4: 0.4}
+  opponents:          # opponent kind -> weight, drawn for each opponent seat
+    cautious: 0.35
+    heuristic: 0.20
+    random: 0.05
+    frozen: 0.15      # fixed frozen models (sampled actions)
+    recent: 0.25      # snapshots of the learning agent (sampled actions)
+  pool:
+    frozen:
+      - models/frozen/ppo_from_copy_500k_seed1.zip
+      - models/frozen/ppo_cont_300k_seed2.zip
+    latest_share: 0.5
+    snapshot_every: 100_000
+    keep: 5
+    keep_every: 400_000
+  round_turn_limit: 50        # turns per player: the round is ended by force after 50 x N turns
+  forced_end_penalty: 0.7     # all cards counted, nobody doubled, -0.7 for the agent
+  reward:                     # round: (mean opponent score - mine) / 20; game end: +1 / 0 / -1
+    scale: 20.0
+    win_bonus: 1.0
+  max_steps: 5000
+
+ppo:
+  n_steps: 1024       # per env -> 8 x 1024 = 8192 steps per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.999
+  gae_lambda: 0.95
+  ent_coef: 0.002
+  learning_rate: 1.0e-4   # constant
+  clip_range: 0.2
+  target_kl: 0.02
+  net_arch: [256, 256]
+
+eval:                 # fixed opponents, deterministic play, one table per number of players
+  freq: 400_000       # 6 evaluations (0, 400k ... 2M): they cost about 20 min each
+  per_n_players:      # the model against N-1 copies of each opponent; chance = 1/N
+    2:                # forgetting detector: same opponents and stops as before
+      n_games: 400
+      opponents: [cautious, heuristic, ppo:models/frozen/ppo_cont_300k_seed2.zip]
+      max_steps: 1200   # finished 2-player games: max 818 actions measured
+    3:
+      n_games: 400
+      opponents: [cautious, heuristic]
+    4:
+      n_games: 400
+      opponents: [cautious, heuristic]
+  max_steps: 2000     # 3 and 4 players; finished games: max 950 actions at 3, 1078 at 4 (measured)
+  stop_if_gap_above:  # automatic stop: behind the cautious bot at 2 players...
+    n2_cautious: 0.0
+  stop_patience: 2    # ...at 2 consecutive evaluations
+  stop_if_winrate_below:  # alarm and stop: winrate under 65 % against the heuristic at 2 players
+    n2_heuristic: 0.65
+
+checkpoint:
+  freq: 200_000       # env steps between checkpoints
+
+models_dir: models
+logs_dir: logs

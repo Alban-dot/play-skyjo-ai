@@ -1,0 +1,50 @@
+# Continuation of two_players_from_copy: 1M more steps from the frozen
+# 500k model (new run, step counter at 0, fresh optimizer), same settings,
+# new seed so that the training games differ from the first run.
+name: two_players_from_copy_cont
+seed: 2
+n_envs: 8
+total_timesteps: 1_000_000
+init_from: models/frozen/ppo_from_copy_500k_seed1.zip   # new run, step counter at 0
+print_updates: true   # one line per PPO update in the log (explained_variance, approx_kl...)
+
+env:
+  n_players: 2
+  opponents:          # bot -> weight, drawn for each opponent seat at each reset
+    random: 0.2
+    heuristic: 0.4
+    cautious: 0.4
+  reward:
+    scale: 20.0
+    win_bonus: 1.0
+  max_steps: 5000
+
+ppo:
+  n_steps: 1024       # per env -> 8 x 1024 = 8192 steps per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.999
+  gae_lambda: 0.95
+  ent_coef: 0.002
+  learning_rate: 1.0e-4   # constant
+  clip_range: 0.2
+  target_kl: 0.02     # an update stops early once approx_kl > 1.5 x 0.02
+  net_arch: [256, 256]
+
+eval:
+  freq: 100_000       # env steps between evaluations (plus one at step 0)
+  n_games: 400
+  opponents: [heuristic, cautious]
+  stop_if_gap_above:  # automatic stop: the model falls back behind the cautious bot...
+    cautious: 0.0
+  stop_patience: 2    # ...at 2 consecutive evaluations
+  plateau:            # also stop (a signal, not a proof: within the evaluation noise) when
+    bot: cautious     # the mean gap of the last 3 evaluations is not 2 points better
+    window: 3         # than the mean of the 3 before
+    min_gain: 2.0
+
+checkpoint:
+  freq: 100_000       # env steps between checkpoints
+
+models_dir: models
+logs_dir: logs

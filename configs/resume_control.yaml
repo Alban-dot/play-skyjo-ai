@@ -1,0 +1,80 @@
+# Step 11: resume from the 1.2M model (step 9) without the column rule (control). Twin of
+# resume_rule.yaml: both configs differ only by the column rule (the
+# test test_resume_configs_differ_only_by_the_column_rule checks it).
+# Column rule (resume_rule.yaml only): a safe column opportunity of positive
+# theoretical gain is always seized. Here nobody plays with it.
+name: resume_control
+seed: 5
+n_envs: 8
+total_timesteps: 1_000_000
+init_from: models/frozen/ppo_multi_1200k_seed4.zip   # new run, step counter at 0
+print_updates: true
+alarms:
+  ev_below: 0.3
+  ev_patience: 5
+  forced_above: 0.02
+  forced_min_games: 200
+
+env:
+  n_players: {2: 0.1, 3: 0.3, 4: 0.6}
+  column_rule: false
+  opponents:
+    cautious: 0.35
+    heuristic: 0.20
+    random: 0.05
+    frozen: 0.15      # fixed frozen models (sampled actions)
+    recent: 0.25      # snapshots of the learning agent (sampled actions)
+  pool:
+    frozen:
+      - models/frozen/ppo_from_copy_500k_seed1.zip
+      - models/frozen/ppo_cont_300k_seed2.zip
+    latest_share: 0.5
+    snapshot_every: 100_000
+    keep: 5
+    keep_every: 400_000
+    column_rule_kinds: []
+  round_turn_limit: 50
+  forced_end_penalty: 0.7
+  reward:
+    scale: 20.0
+    win_bonus: 1.0
+  max_steps: 5000
+
+ppo:
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.999
+  gae_lambda: 0.95
+  ent_coef: 0.002
+  learning_rate: {start: 1.0e-4, end: 1.0e-5}   # linear decay over the run
+  clip_range: 0.2
+  target_kl: 0.02
+  net_arch: [256, 256]
+
+eval:                 # at 0 (the 1.2M), 500k (mid-run) and 1M (end)
+  freq: 500_000
+  column_rule: false  # the model plays without the column rule
+  per_n_players:
+    2:
+      n_games: 400
+      opponents: [cautious, heuristic, ppo:models/frozen/ppo_cont_300k_seed2.zip]
+      max_steps: 1200
+    3:
+      n_games: 400
+      opponents: [cautious, heuristic]
+    4:
+      n_games: 400
+      opponents: [cautious, heuristic]
+  max_steps: 2000
+  stop_if_gap_above:
+    n2_cautious: 0.0
+  stop_patience: 2
+  stop_if_winrate_below:
+    n2_heuristic: 0.65
+
+checkpoint:
+  freq: 250_000
+
+models_dir: models
+logs_dir: logs

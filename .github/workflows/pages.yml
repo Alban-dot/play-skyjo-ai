@@ -1,0 +1,35 @@
+# Publish the browser demo (web_demo/) on GitHub Pages.
+# Manual only (Actions tab, "Run workflow"): nothing runs on a push.
+# The generated files (weights, modules, styles, page files) are in the repository
+# (scripts/export_public.py); Pyodide is not: it is downloaded here, at the version
+# and with the SHA-256 fixed in scripts/fetch_pyodide.py, and served by the site.
+name: Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pyodide (fixed version, checked SHA-256)
+        run: python3 scripts/fetch_pyodide.py --out web_demo/pyodide
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web_demo
+      - id: deployment
+        uses: actions/deploy-pages@v4

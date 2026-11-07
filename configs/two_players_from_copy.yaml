@@ -1,0 +1,46 @@
+# Short PPO run starting from the copy of the cautious bot (policy cloned,
+# value network pre-trained). Small learning rate, little entropy bonus and
+# target_kl so that PPO improves the copy without undoing it.
+name: two_players_from_copy
+seed: 1
+n_envs: 8
+total_timesteps: 500_000
+init_from: models/copy/copy_3000_end_vf_mix_lr3e-4/model.zip   # new run, step counter at 0
+print_updates: true   # one line per PPO update in the log (explained_variance, approx_kl...)
+
+env:
+  n_players: 2
+  opponents:          # bot -> weight, drawn for each opponent seat at each reset
+    random: 0.2
+    heuristic: 0.4
+    cautious: 0.4
+  reward:
+    scale: 20.0
+    win_bonus: 1.0
+  max_steps: 5000
+
+ppo:
+  n_steps: 1024       # per env -> 8 x 1024 = 8192 steps per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.999
+  gae_lambda: 0.95
+  ent_coef: 0.002     # B: 0.01; a cloned policy is peaked, a big bonus would flatten it
+  learning_rate: 1.0e-4   # constant
+  clip_range: 0.2
+  target_kl: 0.02     # an update stops early once approx_kl > 1.5 x 0.02
+  net_arch: [256, 256]
+
+eval:
+  freq: 50_000        # env steps between evaluations (plus one at step 0)
+  n_games: 400
+  opponents: [heuristic, cautious]
+  stop_if_gap_above:  # automatic stop: gap above the threshold...
+    cautious: 12.0
+  stop_patience: 2    # ...at 2 consecutive evaluations
+
+checkpoint:
+  freq: 100_000       # env steps between checkpoints
+
+models_dir: models
+logs_dir: logs

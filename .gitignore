@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Training outputs (large, regenerable)
+models/*
+!models/frozen/
+models/frozen/*
+!models/frozen/ppo_multi_1200k_seed4.zip
+logs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Bot demonstrations (large, regenerable)
+data/
+
+# Players' data, wherever it is stored (pseudos, games, databases and their backups)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.bak
+human_games*.csv
+
+# Secrets (ADMIN_TOKEN, ...)
+.env
+.env.*
+
+# browser demo: Pyodide, downloaded by scripts/fetch_pyodide.py (never in git, public repository included)
+web_demo/pyodide/
+

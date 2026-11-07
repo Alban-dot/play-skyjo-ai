@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesure Pyodide</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded8; --ok: #1f7a3a; --bad: #a12b2b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --fg: #ececea; --muted: #a3a39e; --line: #33332f; --ok: #6ccf8a; --bad: #f08a8a; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, sans-serif; margin: 0 auto; max-width: 720px; padding: 16px; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 12px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  td { border-bottom: 1px solid var(--line); padding: 6px 4px; vertical-align: top; }
+  td + td { text-align: right; font-variant-numeric: tabular-nums; }
+  #status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+  pre { font-size: 12px; overflow-x: auto; color: var(--muted); }
+  button { font: inherit; padding: 6px 12px; }
+</style>
+</head>
+<body>
+<h1>Skyjo dans le navigateur (Pyodide)</h1>
+<p>Mesure de faisabilité : charge Pyodide, NumPy, le code du jeu et les poids, puis joue une partie à 2 joueurs (l'IA contre un bot prudent).</p>
+<p id="status">Chargement…</p>
+<table id="times"></table>
+<button id="copy" hidden>Copier les résultats</button>
+<pre id="detail"></pre>
+<script>
+"use strict";
+const params = new URLSearchParams(location.search);
+// Pyodide comes from the site (pyodide/, scripts/fetch_pyodide.py), at the version of build_info.json;
+// ?cdn=1 loads it from jsDelivr instead, ?pyodide=x.y.z (with cdn=1) another version
+const override = /^\d+\.\d+\.\d+$/.test(params.get("pyodide") || "") ? params.get("pyodide") : null;
+const nMoves = Math.min(Number(params.get("moves")) || 60, 500);
+const t = {};
+const mark = (key) => (t[key] = performance.now());
+
+const PY = String.raw`
+import time
+import numpy as np
+from skyjo.agents.numpy_policy import NumpyPolicy
+from skyjo.agents.registry import make_variant
+from skyjo.env.actions import action_mask, apply_action
+from skyjo.env.observation import encode
+from skyjo.game.engine import SkyjoGame
+from skyjo.game.view import make_view
+from skyjo.ui import session  # noqa: F401 - the session logic loads without torch, SQLite or PyYAML
+from skyjo.ui.styles import load_styles
+
+styles = load_styles()  # styles.json from the build
+policy = NumpyPolicy.load("/home/pyodide/policy.bin", np.random.default_rng(0))
+AI = 0
+state = {}
+
+def new_game(seed):
+    state["game"] = SkyjoGame(2, np.random.default_rng(seed))
+    state["bot"] = make_variant("cautious", np.random.default_rng(seed + 1))
+    state["bot"].reset()
+
+def advance():
+    """Bot moves until the AI must play; False when the game is over."""
+    game = state["game"]
+    while not game.is_over and game.current_player != AI:
+        player = game.current_player
+        apply_action(game, state["bot"].act(make_view(game, player), action_mask(game)))
+    return not game.is_over
+
+def ai_move():
+    """One AI decision (view, observation, mask, network, action); (action, ms in Python)."""
+    start = time.perf_counter()
+    game = state["game"]
+    action, _ = policy.predict(encode(make_view(game, AI)), action_mask(game))
+    apply_action(game, action)
+    return action, (time.perf_counter() - start) * 1000
+`;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error(`échec du chargement de ${src}`));
+    document.head.appendChild(s);
+  });
+}
+
+function network() {
+  // time with at least one download in progress, and bytes actually transferred (0 when cached)
+  const entries = performance.getEntriesByType("resource");
+  const spans = entries.map((e) => [e.startTime, e.responseEnd]).sort((a, b) => a[0] - b[0]);
+  let busy = 0, end = -1;
+  for (const [s, e] of spans) {
+    if (e > end) { busy += e - Math.max(s, end); end = e; }
+  }
+  const files = entries.map((e) => ({
+    name: e.name.split("/").pop().split("?")[0], host: new URL(e.name).host,
+    transfer: e.transferSize, size: e.decodedBodySize,
+    ms: Math.round(e.duration),
+  }));
+  return { busy, transferred: files.reduce((a, f) => a + f.transfer, 0), files };
+}
+
+const stats = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  return { n: s.length, median: q(0.5), p95: q(0.95), max: s[s.length - 1] };
+};
+
+const FIRST_KEY = "skyjo-demo-first-load";
+const comma = (x, digits) => x.toFixed(digits).replace(".", ",");
+
+function origin(r) {
+  // decided from the bytes actually transferred, not from the order of the loads
+  const mb = r.transferred / 1048576;
+  return mb > 0.1 ? `réseau (${comma(mb, 1)} Mo transférés)` : `cache (${Math.round(r.transferred / 1024)} Ko transférés)`;
+}
+
+function show(loads) {
+  const ms = (x) => `${Math.round(x).toLocaleString("fr-FR")} ms`;
+  const fine = (x) => `${comma(x, 2)} ms`;
+  const rows = [
+    ["Fichiers venus du", (r) => origin(r)],
+    ["Hôtes des fichiers", (r) => [...new Set(r.files.map((f) => f.host))].join(", ")],
+    ["Téléchargement (temps avec un transfert en cours)", (r) => ms(r.download_ms)],
+    ["Script pyodide.js", (r) => ms(r.script_ms)],
+    ["Initialisation de Pyodide (loadPyodide)", (r) => ms(r.init_ms)],
+    ["NumPy, code du jeu et poids", (r) => ms(r.packages_ms)],
+    ["Import du paquet et lecture des poids", (r) => ms(r.import_ms)],
+    ["<b>Prêt à jouer</b> (depuis l'ouverture de la page)", (r) => `<b>${ms(r.ready_ms)}</b>`],
+    ["Premier coup d'IA", (r) => fine(r.first_move_ms)],
+    ["Coups suivants : médiane / p95 / max", (r) => `${fine(r.moves.median)} / ${fine(r.moves.p95)} / ${fine(r.moves.max)}`],
+    ["dont calcul Python (médiane)", (r) => fine(r.python_median_ms)],
+  ];
+  const heads = ["1<sup>er</sup> chargement", "2<sup>e</sup> chargement (même onglet)"].slice(0, loads.length);
+  document.getElementById("times").innerHTML =
+    `<tr><td></td>${heads.map((h) => `<td><b>${h}</b></td>`).join("")}</tr>` +
+    rows.map(([k, f]) => `<tr><td>${k}</td>${loads.map((r) => `<td>${f(r)}</td>`).join("")}</tr>`).join("");
+  const all = loads.length === 2 ? { first: loads[0], second: loads[1] } : { first: loads[0] };
+  document.getElementById("detail").textContent = JSON.stringify(all, null, 1);
+  const copy = document.getElementById("copy");
+  copy.hidden = false;
+  copy.onclick = () => {
+    const text = JSON.stringify(all);
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    // http://<PC address> on a phone is not a secure context: copy through a selected text area
+    const area = Object.assign(document.createElement("textarea"), { value: text });
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+    copy.textContent = "Copié";
+  };
+}
+
+async function main() {
+  const status = document.getElementById("status");
+  mark("start");
+  const info = await fetch("build_info.json").then((r) => {
+    if (!r.ok) throw new Error("build_info.json absent : lance python scripts/build_web_demo.py");
+    return r.json();
+  });
+  const version = override || info.pyodide;
+  const indexURL = params.get("cdn") === "1" ? `https://cdn.jsdelivr.net/pyodide/v${version}/full/`
+    : new URL("pyodide/", location.href).href;
+  await loadScript(indexURL + "pyodide.js");
+  mark("script");
+  status.textContent = "Initialisation de Pyodide…";
+  const pyodide = await loadPyodide({ indexURL });
+  mark("init");
+  status.textContent = "NumPy, code du jeu et poids…";
+  const [, zip, weights] = await Promise.all([
+    pyodide.loadPackage("numpy"),
+    fetch("skyjo.zip").then((r) => r.arrayBuffer()),
+    fetch("policy.bin").then((r) => r.arrayBuffer()),
+  ]);
+  pyodide.unpackArchive(zip, "zip", { extractDir: "/home/pyodide" });
+  pyodide.FS.writeFile("/home/pyodide/policy.bin", new Uint8Array(weights));
+  mark("packages");
+  pyodide.runPython(PY);
+  const newGame = pyodide.globals.get("new_game");
+  const advance = pyodide.globals.get("advance");
+  const aiMove = pyodide.globals.get("ai_move");
+  mark("import");
+
+  newGame(1);
+  advance();
+  const moveStart = performance.now();
+  aiMove().destroy();
+  const firstMove = performance.now() - moveStart;
+
+  const js = [], py = [];
+  for (let seed = 2; js.length < nMoves; seed++) {
+    if (!advance()) { newGame(seed); advance(); }
+    const s = performance.now();
+    const res = aiMove();
+    js.push(performance.now() - s);
+    py.push(res.get(1));
+    res.destroy();
+  }
+  const net = network();
+  const r = {
+    pyodide: version, build: info.date || null, model_sha256: info.model_sha256.slice(0, 12), python: pyodide.runPython("import sys; sys.version.split()[0]"),
+    numpy: pyodide.runPython("np.__version__"), styles: pyodide.runPython("len(styles)"), user_agent: navigator.userAgent,
+    download_ms: net.busy, transferred: net.transferred,
+    script_ms: t.script - t.start, init_ms: t.init - t.script, packages_ms: t.packages - t.init,
+    import_ms: t.import - t.packages, ready_ms: t.import, first_move_ms: firstMove,
+    moves: stats(js), python_median_ms: stats(py).median, files: net.files,
+  };
+  if (params.get("run") !== "2") {
+    // first load: keep it, then open the page again in this tab (the files are now cached)
+    let kept = false;
+    try { sessionStorage.setItem(FIRST_KEY, JSON.stringify(r)); kept = true; } catch (e) { /* storage blocked */ }
+    show([r]);
+    if (!kept) {
+      status.textContent = "Premier chargement mesuré ; deuxième impossible (stockage de session bloqué).";
+      window.__results = { first: r };
+      return;
+    }
+    status.textContent = "Premier chargement mesuré. Ouverture du deuxième chargement…";
+    const next = new URL(location.href);
+    next.searchParams.set("run", "2");
+    setTimeout(() => location.replace(next), 1000);
+    return;
+  }
+  let first = null;
+  try { first = JSON.parse(sessionStorage.getItem(FIRST_KEY)); sessionStorage.removeItem(FIRST_KEY); } catch (e) { /* none */ }
+  show(first ? [first, r] : [r]);
+  status.innerHTML = first
+    ? "Terminé : les deux chargements sont mesurés. Pour un nouveau premier chargement à froid, ferme les onglets privés et rouvre la page sans <code>run=2</code>."
+    : "Terminé, mais le premier chargement n'a pas été retrouvé : colonne unique = ce chargement-ci.";
+  status.className = "ok";
+  window.__results = first ? { first, second: r } : { second: r };
+}
+
+main().catch((e) => {
+  const status = document.getElementById("status");
+  status.textContent = `Erreur : ${e.message}`;
+  status.className = "bad";
+  window.__results = { error: String(e) };
+});
+</script>
+</body>
+</html>

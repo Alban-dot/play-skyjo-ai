@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration Skyjo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Skyjo <span>administration</span></h1>
+    <p class="info"></p>
+    <nav><a class="ghost" href="/">Jouer</a></nav>
+  </header>
+  <main class="admin">
+    <section class="panel">
+      <h2>Joueurs</h2>
+      <p class="sub">Les pseudos ne sont pas protégés : un même pseudo peut regrouper plusieurs personnes.</p>
+      <div id="players"></div>
+    </section>
+    <section id="detail" class="panel" hidden></section>
+  </main>
+  <p id="toast" class="toast" role="alert" hidden></p>
+  <script src="/static/common.js"></script>
+  <script src="/static/admin.js"></script>
+</body>
+</html>

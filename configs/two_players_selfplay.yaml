@@ -1,0 +1,73 @@
+# Self-play from the best model so far (300k of the continuation run):
+# a pool of recent snapshots of the agent, fixed frozen models and bots.
+# Rounds that never end (two agents refusing to finish) are ended by force.
+name: two_players_selfplay
+seed: 3
+n_envs: 8
+total_timesteps: 2_000_000
+init_from: models/frozen/ppo_cont_300k_seed2.zip   # new run, step counter at 0
+print_updates: true   # one line per PPO update + one line of round stats per opponent kind
+alarms:               # stop the training with a message in the log when...
+  ev_below: 0.3       # ...explained_variance stays below 0.3...
+  ev_patience: 5      # ...for 5 consecutive updates,
+  forced_above: 0.02  # ...or more than 2 % of the rounds of the last 1000 games are ended by force
+  forced_min_games: 200
+
+env:
+  n_players: 2
+  opponents:          # opponent kind -> weight, drawn at each reset
+    recent: 0.40      # snapshots of the learning agent (sampled actions)
+    frozen: 0.20      # fixed frozen models (sampled actions)
+    cautious: 0.25
+    heuristic: 0.10
+    random: 0.05
+  pool:
+    frozen:
+      - models/frozen/ppo_from_copy_500k_seed1.zip
+      - models/frozen/ppo_cont_300k_seed2.zip
+    latest_share: 0.5         # "recent": the latest snapshot half of the time, another one otherwise
+    snapshot_every: 100_000   # snapshot of the policy into the pool (models/pool/<run>/recent)...
+    keep: 5                   # ...keeping the last 5
+    keep_every: 400_000       # plus one kept for good every 400k steps (models/pool/<run>/kept)
+  round_turn_limit: 50        # turns per player (100 in total at 2 players): the round is then
+  forced_end_penalty: 0.7     # ended by force (all cards counted, nobody doubled), -0.7 for the agent
+  reward:
+    scale: 20.0
+    win_bonus: 1.0
+  max_steps: 5000
+
+ppo:
+  n_steps: 1024       # per env -> 8 x 1024 = 8192 steps per update
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.999
+  gae_lambda: 0.95
+  ent_coef: 0.002
+  learning_rate: 1.0e-4   # constant
+  clip_range: 0.2
+  target_kl: 0.02     # an update stops early once approx_kl > 1.5 x 0.02
+  net_arch: [256, 256]
+
+eval:
+  freq: 200_000       # env steps between evaluations (plus one at step 0)
+  n_games: 400
+  opponents:          # fixed opponents, deterministic play
+    - heuristic
+    - cautious
+    - ppo:models/frozen/ppo_cont_300k_seed2.zip
+  max_steps: 2000     # longer games are counted as blocked and excluded (finished games: max 818 measured)
+  stop_if_gap_above:  # automatic stop: the model falls back behind the cautious bot...
+    cautious: 0.0
+  stop_patience: 2    # ...at 2 consecutive evaluations
+  stop_if_winrate_below:  # alarm and stop: winrate under 65 % at 2 consecutive evaluations
+    heuristic: 0.65
+  plateau:           # also stop (a signal, not a proof) when the mean gap of the last 3
+    bot: cautious     # evaluations is not 2 points better than the mean of the 3 before
+    window: 3
+    min_gain: 2.0
+
+checkpoint:
+  freq: 200_000       # env steps between checkpoints
+
+models_dir: models
+logs_dir: logs

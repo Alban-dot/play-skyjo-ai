@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relecture d'une partie de Skyjo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Skyjo <span>relecture</span></h1>
+    <p id="info" class="info"></p>
+    <nav>
+      <a class="ghost" href="aide.html">Aide</a>
+      <a class="ghost" href="index.html">Jouer</a>
+    </nav>
+  </header>
+
+  <main class="replay">
+    <section class="panel replay-loader" data-hide-when-ready>
+      <div id="loader" class="loader" data-state="loading">
+        <div id="loader-bar" class="loader-bar" role="progressbar" aria-label="Chargement du jeu"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="loader-fill"></span></div>
+        <p id="loader-text" class="loader-text" aria-live="polite">Chargement du jeu…</p>
+      </div>
+      <p id="storage-note" class="storage-note" role="status" hidden></p>
+    </section>
+    <section id="summary" class="panel summary"></section>
+
+    <section class="panel controls" aria-label="Commandes de relecture">
+      <div class="buttons">
+        <button id="first" class="secondary" type="button" title="Début (Origine)">⏮ Début</button>
+        <button id="prev-round" class="secondary" type="button" title="Manche précédente">« Manche</button>
+        <button id="prev" class="secondary" type="button" title="Étape précédente (←)">◀ Précédent</button>
+        <button id="play" class="primary" type="button" title="Lecture automatique (espace)">▶ Lecture</button>
+        <button id="next" class="secondary" type="button" title="Étape suivante (→)">Suivant ▶</button>
+        <button id="next-round" class="secondary" type="button" title="Manche suivante">Manche »</button>
+        <button id="last" class="secondary" type="button" title="Fin (Fin)">Fin ⏭</button>
+      </div>
+      <label class="slider">
+        <span id="counter"></span>
+        <input id="step" type="range" min="0" value="0">
+      </label>
+      <p class="note">Toutes les cartes sont visibles : les cartes encore cachées à ce moment de la partie sont
+        affichées en pâle, bordure en pointillés. La case touchée par le coup est entourée.</p>
+    </section>
+
+    <section class="replay-board">
+      <div id="texts" class="panel step-texts" aria-live="polite"></div>
+      <div id="round-end" class="panel round-end" hidden></div>
+      <div class="table">
+        <div class="center">
+          <div class="piles">
+            <div class="pile">
+              <div id="draw" class="card back big"></div>
+              <span class="pile-label">Pioche <small id="draw-count"></small></span>
+            </div>
+            <div class="pile">
+              <div id="discard" class="card big"></div>
+              <span class="pile-label">Défausse</span>
+            </div>
+            <div id="hand-pile" class="pile hand" hidden>
+              <div id="hand" class="card big"></div>
+              <span id="hand-label" class="pile-label">En main</span>
+            </div>
+          </div>
+        </div>
+        <div id="players" class="opponents replay-players"></div>
+      </div>
+    </section>
+  </main>
+  <p id="toast" class="toast" role="alert" hidden></p>
+
+  <script src="demo.js"></script>
+  <script src="static/common.js"></script>
+  <script src="static/replay.js"></script>
+</body>
+</html>

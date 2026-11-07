@@ -1,0 +1,54 @@
+# Styles of the AIs, as shown in the web interface. You may edit names,
+# descriptions and levels freely; the server checks this file when it starts.
+#
+#   id           stable identifier, stored with each game (do not change it once games are recorded)
+#   name         shown at the table and in the record
+#   level        one of: Facile, Moyen, Difficile, Expert
+#   description  one sentence
+#   agent        who plays:
+#                  random | heuristic | cautious       simple bots
+#                  seeker:key=value,...                column hunter (see skyjo/agents/column_seeker.py)
+#                  model:guard | model:guard-forced | model:sample | model:det   the trained network
+#   agent_2p     (optional) agent used at 2 players instead of ``agent``
+#
+# Levels are estimates: the column hunter 14/8 and the model were measured
+# against the cautious bot (the hunter: no detectable difference); the hasty
+# bot and the unpredictable one were not measured against the others.
+
+styles:
+  - id: distrait
+    name: Le Distrait
+    level: Facile
+    description: Il joue au hasard parmi les coups permis, sans aucune stratégie.
+    agent: random
+
+  - id: presse
+    name: Le Pressé
+    level: Facile
+    description: Il garde les petites cartes, jette les grosses, complète les colonnes à portée et finit la manche sans se méfier.
+    agent: heuristic
+
+  - id: prudent
+    name: Le Prudent
+    level: Moyen
+    description: Il joue comme Le Pressé mais évite de finir la manche quand il risque le doublement.
+    agent: cautious
+
+  - id: chasseur
+    name: Le Chasseur
+    level: Moyen
+    description: En début de manche, il parie sur des colonnes de cartes identiques pour les faire disparaître ; son niveau est proche de celui du Prudent.
+    agent: seeker:seek_until_turn=14,max_bet_value=8
+
+  - id: imprevisible
+    name: L'Imprévisible
+    level: Difficile
+    description: Le réseau entraîné, qui tire chaque coup au hasard selon ses préférences.
+    agent: model:sample
+
+  - id: expert
+    name: L'Expert
+    level: Expert
+    description: Le réseau entraîné à son meilleur, qui complète toujours une colonne rentable à 3 et 4 joueurs.
+    agent: model:guard-forced
+    agent_2p: model:guard

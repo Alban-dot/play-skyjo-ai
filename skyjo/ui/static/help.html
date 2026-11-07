@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- Keep in sync with web_demo/aide.html, the help of the browser demo: same rules and
+     explanations; only the links, the storage of the games and the note on the engine differ. -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aide — Skyjo contre l'IA</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Skyjo <span>aide</span></h1>
+    <p class="info"></p>
+    <nav><a class="ghost" href="/">Jouer</a></nav>
+  </header>
+
+  <main class="doc">
+    <article class="panel">
+      <h2>Le but</h2>
+      <p>Avoir le <strong>moins de points</strong> possible. La partie se joue en plusieurs manches ; elle s'arrête
+        dès qu'un joueur atteint <strong>100 points</strong> au total, et le plus petit total gagne.</p>
+
+      <h2>Les cartes et la grille</h2>
+      <p>Les cartes valent de −2 à 12. Chacun a une grille de 12 cartes face cachée (3 lignes, 4 colonnes) et en
+        retourne deux au début de chaque manche. Couleurs :
+        <span class="chip v-neg">−2 −1</span> <span class="chip v-zero">0</span> <span class="chip v-low">1 à 4</span>
+        <span class="chip v-mid">5 à 8</span> <span class="chip v-high">9 à 12</span>.</p>
+
+      <h2>Ton tour</h2>
+      <ul>
+        <li><strong>Piocher</strong> : tu découvres la carte, puis soit tu la poses sur une case de ta grille
+          (la carte remplacée part à la défausse), soit tu la <strong>jettes et retournes</strong> une de tes cartes cachées.</li>
+        <li><strong>Prendre la carte de la défausse</strong> : tu dois la poser sur une case de ta grille.</li>
+      </ul>
+
+      <h2>Les colonnes</h2>
+      <div class="example">
+        <div class="mini grid one-col">
+          <div class="card v-mid">7</div><div class="card v-mid">7</div><div class="card v-mid">7</div>
+        </div>
+        <p>Trois cartes <strong>visibles et identiques</strong> dans une même colonne : la colonne disparaît et ne
+          compte plus. Ici, 21 points en moins. Ça marche aussi avec trois 0 ou trois −1, mais le gain est faible.</p>
+      </div>
+
+      <h2>Fin de manche et score</h2>
+      <p>Quand un joueur a retourné toutes ses cartes, chacun des autres joue <strong>un dernier tour</strong>. Puis
+        toutes les cartes sont retournées, les colonnes identiques ainsi formées disparaissent, et on additionne.</p>
+      <div class="example">
+        <div class="mini grid">
+          <div class="card v-low">1</div><div class="card v-neg">−2</div><div class="card removed"></div><div class="card v-zero">0</div>
+          <div class="card v-mid">5</div><div class="card v-low">3</div><div class="card removed"></div><div class="card v-low">2</div>
+          <div class="card v-low">4</div><div class="card v-high">10</div><div class="card removed"></div><div class="card v-neg">−1</div>
+        </div>
+        <p>Score de cette grille : 1 − 2 + 0 + 5 + 3 + 2 + 4 + 10 − 1 = <strong>22 points</strong> (la colonne vide a
+          été complétée et retirée).</p>
+      </div>
+      <p class="callout"><strong>Doublement</strong> : celui qui a terminé la manche doit avoir
+        <strong>strictement le plus petit score</strong>. Sinon, ses points sont doublés (s'ils sont positifs). Exemple :
+        tu termines avec 15, un adversaire a 12 → tu marques 15 × 2 = <strong>30</strong>. Une égalité pour le plus petit
+        score déclenche aussi le doublement.</p>
+
+      <h2>Lire l'écran</h2>
+      <ul>
+        <li>Ta grille est en bas, celles des IA en haut ; au centre, la pioche, la défausse et ta carte en main.</li>
+        <li>Les cases où tu peux jouer sont <strong>entourées de jaune</strong> ; les autres ne réagissent pas.</li>
+        <li>Le <strong>dernier coup de chaque IA</strong> est entouré en bleu, avec une phrase sous son nom (« a pris
+          le 3 à la défausse »). Le déroulement de tous les coups, le plus récent en haut, s'affiche dans la colonne de droite (case
+          « Afficher le déroulement ») ; sur un petit écran, il est sous la table, à ouvrir.</li>
+        <li>Un bandeau jaune annonce le <strong>dernier tour</strong> ; le tableau « Scores » donne la manche
+          précédente (×2 = doublé, ✱ = a terminé la manche) et les totaux.</li>
+      </ul>
+
+      <h2>Questions courtes</h2>
+      <dl class="faq">
+        <dt>Pourquoi je ne peux pas cliquer sur une carte ?</dt>
+        <dd>Ce n'est pas ton tour, ou ce coup n'est pas permis à ce moment : seules les cases entourées sont jouables.</dd>
+        <dt>Puis-je jeter une carte prise à la défausse ?</dt>
+        <dd>Non : une carte prise à la défausse doit être posée. Seule une carte piochée peut être jetée.</dd>
+        <dt>Que se passe-t-il quand la pioche est vide ?</dt>
+        <dd>La défausse, sauf sa carte du dessus, est mélangée pour refaire une pioche.</dd>
+        <dt>Qui commence une manche ?</dt>
+        <dd>Celui dont les deux cartes retournées font la plus grande somme (égalité : le plus grand total, puis le hasard).</dd>
+        <dt>Mon pseudo est-il protégé ?</dt>
+        <dd>Non : il sert seulement à regrouper tes parties. Quelqu'un d'autre peut choisir le même.</dd>
+      </dl>
+
+      <h2>À propos de l'IA</h2>
+      <p>L'Expert et L'Imprévisible sont un <strong>réseau de neurones</strong> entraîné par
+        <strong>apprentissage par renforcement</strong> : il a joué des parties contre lui-même et contre des bots,
+        environ 1,2 million de coups, et a appris de ses résultats, sans qu'on lui écrive de stratégie. Il ne voit que
+        ce que tu vois : ni tes cartes cachées, ni l'ordre de la pioche.</p>
+      <p>Les autres styles (Le Distrait, Le Pressé, Le Prudent, Le Chasseur) sont des règles écrites à la main, plus ou
+        moins fines. Le niveau dépend donc du style choisi.</p>
+      <p>L'IA est <strong>battable</strong> : Skyjo laisse une grande place au hasard des cartes, et même L'Expert perd
+        environ 3 parties sur 10 contre Le Prudent à 2 joueurs (mesuré sur 1 000 parties).</p>
+    </article>
+  </main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skyjo contre l'IA</title>
+  <meta name="description" content="Joue au Skyjo contre une IA entraînée par apprentissage par renforcement, directement dans ton navigateur.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Skyjo <span>contre l'IA</span></h1>
+    <p id="info" class="info"></p>
+    <nav>
+      <a class="ghost" href="aide.html" target="_blank" rel="noopener">Aide</a>
+      <button id="btn-record" class="ghost" type="button">Mon bilan</button>
+      <button id="btn-home" class="ghost" type="button" hidden>Accueil</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="home demo-home">
+      <div class="panel intro">
+        <h2>Une IA de Skyjo, dans ton navigateur</h2>
+        <p>Choisis tes adversaires : de simples règles écrites à la main, ou un <strong>réseau de neurones</strong>
+          entraîné par apprentissage par renforcement (L'Expert, L'Imprévisible). Il ne voit que ce que tu vois.</p>
+        <p>Rien n'est envoyé à un serveur : le jeu et l'IA tournent sur ton appareil, et ton bilan reste dans ce
+          navigateur. <a href="aide.html" target="_blank" rel="noopener">Règles et aide</a>.</p>
+        <div id="loader" class="loader" data-state="loading">
+          <div id="loader-bar" class="loader-bar" role="progressbar" aria-label="Chargement du jeu"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="loader-fill"></span></div>
+          <p id="loader-text" class="loader-text" aria-live="polite">Chargement du jeu…</p>
+        </div>
+        <p id="storage-note" class="storage-note" role="status" hidden></p>
+      </div>
+      <form id="new-game" class="panel" novalidate>
+        <h2>Nouvelle partie</h2>
+        <label class="field">
+          <span>Ton pseudo <small>(facultatif)</small></span>
+          <input id="pseudo" type="text" minlength="2" maxlength="20" autocomplete="nickname"
+                 placeholder="2 à 20 caractères">
+          <small>Lettres, chiffres, espaces et tirets. Il s'affiche à la table ; il reste dans ce navigateur.</small>
+        </label>
+        <fieldset>
+          <legend>Nombre de joueurs</legend>
+          <div class="segmented">
+            <label><input type="radio" name="players" value="2" checked><span>2 joueurs</span></label>
+            <label><input type="radio" name="players" value="3"><span>3 joueurs</span></label>
+            <label><input type="radio" name="players" value="4"><span>4 joueurs</span></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Tes adversaires</legend>
+          <div id="seats" class="seats"></div>
+        </fieldset>
+        <label class="field seed">
+          <span>Graine <small>(optionnelle)</small></span>
+          <input id="seed" type="number" min="0" step="1" inputmode="numeric" placeholder="au hasard">
+          <small>La même graine redonne les mêmes donnes : pratique pour rejouer une partie.</small>
+        </label>
+        <button class="primary" type="submit" disabled>Chargement du jeu…</button>
+      </form>
+    </section>
+
+    <section id="game" class="game" hidden>
+      <div class="game-toolbar">
+        <label class="toggle wide-only"><input id="show-log" type="checkbox" checked> Afficher le déroulement</label>
+        <label class="speed">Vitesse des IA
+          <select id="speed">
+            <option value="600">normale</option>
+            <option value="200">rapide</option>
+            <option value="0">instantanée</option>
+          </select>
+        </label>
+      </div>
+      <div class="game-body">
+        <div class="table">
+          <div id="opponents" class="opponents"></div>
+          <div class="center">
+            <p id="banner" class="banner" hidden></p>
+            <div class="center-row">
+              <div class="piles">
+                <div class="pile">
+                  <button id="draw" class="card back big" type="button" aria-label="Pioche"></button>
+                  <span class="pile-label">Pioche <small id="draw-count"></small></span>
+                </div>
+                <div class="pile">
+                  <button id="discard" class="card big" type="button" aria-label="Défausse"></button>
+                  <span class="pile-label">Défausse</span>
+                </div>
+                <div id="hand-pile" class="pile hand" hidden>
+                  <div id="hand" class="card big"></div>
+                  <span class="pile-label">Ta carte</span>
+                </div>
+              </div>
+              <div class="panel score-panel">
+                <h3>Scores</h3>
+                <table id="scores" class="scores"></table>
+              </div>
+            </div>
+            <p id="prompt" class="prompt"></p>
+            <div id="end-actions" class="end-actions" hidden></div>
+          </div>
+          <div id="me" class="me"></div>
+        </div>
+        <aside id="journal" class="panel journal" aria-label="Déroulement de la partie">
+          <div class="journal-head">
+            <h3>Déroulement</h3>
+            <button id="btn-log" class="secondary small narrow-only" type="button" aria-expanded="false"
+                    aria-controls="log">Afficher</button>
+          </div>
+          <ol id="log" class="log"></ol>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" hidden>
+    <div id="modal-box" class="modal-box" role="dialog" aria-modal="true"></div>
+  </div>
+  <p id="toast" class="toast" role="alert" hidden></p>
+
+  <script src="demo.js"></script>
+  <script src="static/common.js"></script>
+  <script src="static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+/* Browser demo: what the pages of the server do not have (presentation, loader).
+   Colours and sizes from static/style.css (copied from skyjo/ui/static by the build). */
+
+.demo-home { flex-direction: column; align-items: center; gap: 16px; }
+.demo-home > .panel { width: min(640px, 100%); }
+.intro h2 { font-size: 1.2rem; }
+.intro p { margin: 0 0 10px; line-height: 1.45; }
+.intro a { color: var(--felt); font-weight: 600; }
+
+.loader { margin-top: 12px; }
+.loader-bar {
+  height: 10px; border-radius: 999px; background: var(--line); overflow: hidden;
+}
+.loader-bar span {
+  display: block; height: 100%; width: 0; border-radius: inherit; background: var(--felt);
+  transition: width .4s ease;
+}
+.loader[data-state="loading"] .loader-bar span {
+  background-image: linear-gradient(90deg, var(--felt) 0, #2f8a68 50%, var(--felt) 100%);
+  background-size: 200% 100%; animation: loader-move 1.4s linear infinite;
+}
+.loader[data-state="ready"] .loader-bar span { background: var(--zero); }
+.loader[data-state="failed"] .loader-bar span { background: var(--danger); }
+.loader-text { margin: 6px 0 0; color: var(--muted); font-size: .92rem; }
+.loader[data-state="failed"] .loader-text { color: var(--danger); font-weight: 600; }
+@keyframes loader-move { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .loader-bar span { transition: none; animation: none !important; } }
+
+.home .primary:disabled { opacity: .6; cursor: wait; filter: none; }
+
+/* the replay page: the loader above the summary */
+.replay-loader { margin-bottom: 12px; }
+.replay-loader .loader { margin-top: 0; }
+
+/* the browser refuses its storage: the game is playable, without record nor replay */
+.storage-note {
+  margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: #fff4d6; color: var(--accent-ink);
+  font-size: .92rem; line-height: 1.4;
+}
